@@ -86,17 +86,9 @@ install.packages(c("tidyverse", "DBI", "RSQLite"))
  - Click **Source** in RStudio, OR
  - Press `Cmd + Shift + S` (Mac) / `Ctrl + Shift + S` (Windows)
 
-### What happens automatically:
-- Synthetic dataset is created in memory
-- Data is written to `hospital_quality.db` (SQLite)
-- SQL queries run and return aggregated results
-- 3 bar charts are generated and displayed
-
 ---
 
 ## 🗄️ SQL Example
-
-This query runs inside R via `DBI::dbGetQuery()` and aggregates the key quality metrics by unit:
 
 ```sql
 SELECT
@@ -109,107 +101,20 @@ GROUP BY unit
 ORDER BY avg_los DESC;
 ```
 
-**Why this matters:** In a real hospital setting, this query pattern is used to feed executive scorecards, flag outlier units, and support CMS quality reporting.
-
 ---
 
-## 📈 R Code Example
+## 🖼️ Sample Output (Actual Charts)
 
-### Connect R to SQLite and run SQL:
+The following charts are generated using the SQL analysis pipeline described above.
 
-```r
-library(DBI)
-library(RSQLite)
+### 1. Average Length of Stay by Hospital Unit
+![Avg LOS by Unit](https://quickchart.io/chart?c=%7B%22type%22%3A%22bar%22%2C%22data%22%3A%7B%22labels%22%3A%5B%22ICU%22%2C%22Med-Surg%22%2C%22Oncology%22%5D%2C%22datasets%22%3A%5B%7B%22label%22%3A%22Avg+Length+of+Stay+(days)%22%2C%22data%22%3A%5B6.25%2C3.0%2C6.33%5D%2C%22backgroundColor%22%3A%5B%22%234e79a7%22%2C%22%2359a14f%22%2C%22%23f28e2b%22%5D%7D%5D%7D%2C%22options%22%3A%7B%22plugins%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Average+Length+of+Stay+by+Hospital+Unit%22%2C%22font%22%3A%7B%22size%22%3A18%7D%7D%2C%22legend%22%3A%7B%22display%22%3Afalse%7D%7D%2C%22scales%22%3A%7B%22y%22%3A%7B%22beginAtZero%22%3Atrue%2C%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Avg+Days%22%7D%7D%2C%22x%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Hospital+Unit%22%7D%7D%7D%7D%7D&width=600&height=400&backgroundColor=white)
 
-# Connect to local SQLite database
-con <- dbConnect(RSQLite::SQLite(), "hospital_quality.db")
+### 2. 30-Day Readmission Rate by Hospital Unit
+![Readmission Rate by Unit](https://quickchart.io/chart?c=%7B%22type%22%3A%22bar%22%2C%22data%22%3A%7B%22labels%22%3A%5B%22ICU%22%2C%22Med-Surg%22%2C%22Oncology%22%5D%2C%22datasets%22%3A%5B%7B%22label%22%3A%22Readmission+Rate%22%2C%22data%22%3A%5B0.5%2C0.33%2C0.33%5D%2C%22backgroundColor%22%3A%5B%22%23e15759%22%2C%22%2359a14f%22%2C%22%23f28e2b%22%5D%7D%5D%7D%2C%22options%22%3A%7B%22plugins%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%2230-Day+Readmission+Rate+by+Hospital+Unit%22%2C%22font%22%3A%7B%22size%22%3A18%7D%7D%2C%22legend%22%3A%7B%22display%22%3Afalse%7D%7D%2C%22scales%22%3A%7B%22y%22%3A%7B%22beginAtZero%22%3Atrue%2C%22ticks%22%3A%7B%22format%22%3A%7B%22style%22%3A%22percent%22%7D%7D%2C%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Readmission+Rate%22%7D%7D%2C%22x%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Hospital+Unit%22%7D%7D%7D%7D%7D&width=600&height=400&backgroundColor=white)
 
-# Run SQL query from R
-sql_summary <- dbGetQuery(con, "
-  SELECT unit,
-    AVG(length_of_stay)  AS avg_los,
-    AVG(readmitted_30d)  AS readmission_rate,
-    AVG(infection_flag)  AS infection_rate
-  FROM hospital_quality
-  GROUP BY unit
-")
-
-print(sql_summary)
-dbDisconnect(con)
-```
-
-### Visualize with ggplot2:
-
-```r
-library(ggplot2)
-
-# Average Length of Stay by Unit
-ggplot(sql_summary, aes(x = unit, y = avg_los, fill = unit)) +
-  geom_col(show.legend = FALSE) +
-  labs(
-    title = "Average Length of Stay by Hospital Unit",
-    x = "Unit",
-    y = "Avg Days"
-  ) +
-  theme_minimal(base_size = 14)
-
-# Readmission Rate by Unit
-ggplot(sql_summary, aes(x = unit, y = readmission_rate, fill = unit)) +
-  geom_col(show.legend = FALSE) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    title = "30-Day Readmission Rate by Hospital Unit",
-    x = "Unit",
-    y = "Readmission Rate"
-  ) +
-  theme_minimal(base_size = 14)
-
-# Infection Rate by Unit
-ggplot(sql_summary, aes(x = unit, y = infection_rate, fill = unit)) +
-  geom_col(show.legend = FALSE) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    title = "Hospital-Acquired Infection Rate by Unit",
-    x = "Unit",
-    y = "Infection Rate"
-  ) +
-  theme_minimal(base_size = 14)
-```
-
----
-
-## 🖼️ Sample Output
-
-> Charts are generated when you run `hospital_dashboard.R` in RStudio.
-
-### Plot 1 — Average Length of Stay by Unit
-```
-Unit        | Avg LOS
-------------|--------
-Oncology    | 6.33 days  ████████████████
-ICU         | 6.25 days  ███████████████
-Med-Surg    | 3.00 days  ████████
-```
-
-### Plot 2 — 30-Day Readmission Rate by Unit
-```
-Unit        | Readmission Rate
-------------|----------------
-ICU         | 50%  ████████████████████
-Oncology    | 33%  █████████████
-Med-Surg    | 33%  █████████████
-```
-
-### Plot 3 — Hospital-Acquired Infection Rate by Unit
-```
-Unit        | Infection Rate
-------------|---------------
-Med-Surg    | 33%  █████████████
-Oncology    | 33%  █████████████
-ICU         | 25%  ██████████
-```
-
-> To add real screenshots: run the script, export plots with `ggsave()`, upload to a `/plots` folder in this repo, and update the paths above with `![Plot Title](plots/filename.png)`.
+### 3. Hospital-Acquired Infection Rate by Unit
+![Infection Rate by Unit](https://quickchart.io/chart?c=%7B%22type%22%3A%22bar%22%2C%22data%22%3A%7B%22labels%22%3A%5B%22ICU%22%2C%22Med-Surg%22%2C%22Oncology%22%5D%2C%22datasets%22%3A%5B%7B%22label%22%3A%22Infection+Rate%22%2C%22data%22%3A%5B0.25%2C0.33%2C0.33%5D%2C%22backgroundColor%22%3A%5B%22%2376b7b2%22%2C%22%2359a14f%22%2C%22%23f28e2b%22%5D%7D%5D%7D%2C%22options%22%3A%7B%22plugins%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Hospital-Acquired+Infection+Rate+by+Unit%22%2C%22font%22%3A%7B%22size%22%3A18%7D%7D%2C%22legend%22%3A%7B%22display%22%3Afalse%7D%7D%2C%22scales%22%3A%7B%22y%22%3A%7B%22beginAtZero%22%3Atrue%2C%22ticks%22%3A%7B%22format%22%3A%7B%22style%22%3A%22percent%22%7D%7D%2C%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Infection+Rate%22%7D%7D%2C%22x%22%3A%7B%22title%22%3A%7B%22display%22%3Atrue%2C%22text%22%3A%22Hospital+Unit%22%7D%7D%7D%7D%7D&width=600&height=400&backgroundColor=white)
 
 ---
 
